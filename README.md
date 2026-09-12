@@ -1,41 +1,36 @@
-﻿
-# MERN E-COMMERCE SERVER 2024
+﻿# ⚙️ MERN E-Commerce Backend Microservice & API Engine
 
-Hi! My name is **Abhishek Nahar Singh**, I have created this tutorial to teach MERN Stack for free on YouTube.
+A robust RESTful backend engine powering a multi-feature e-commerce platform and real-time admin analytics dashboard. Built with Node.js, Express.js, TypeScript, and MongoDB.
 
-# Prerequisite
+Developed & Maintained by **Yogesh Sharma** ([GitHub](https://github.com/iyogisharma001) | [LinkedIn](https://www.linkedin.com/in/yogesh-sharma-597466325/)).
 
-1.  Must have basic knowledge of **Node**, **React**, **Express**, **MongoDB** . _I have made tutorial on each technology on YouTube , make sure to check it out_. **Links are Below respectively**
-2.  TypeScript - https://youtu.be/66_bET6sI20
-3.   Node - https://youtu.be/BSO9C8Z-YV8
-4.  React In One Video - https://youtu.be/b50zSyLiCYQ
-5. React Full Course - https://www.youtube.com/playlist?list=PLt5mNkGuWcuWSUHxSzWP74IU9U4BTVLt0
-6.  Express - https://youtu.be/teipbke8c4A\
-7.  MongoDB - https://youtu.be/AYDP1S5BbTo
-8. Master Backend In One Video - https://youtu.be/cGAdC4A5fF4
-9.  RestApi - https://youtu.be/AhCSfuG9Jxw _(optional)_
+---
 
-# Install Dependencies
+## 🛠️ Tech Stack & Key Technologies
 
-**For Backend** - `npm i && npm run build`
+- **Server Runtime:** Node.js & Express.js (TypeScript)
+- **Database Layer:** MongoDB with Mongoose ODM
+- **Caching Layer:** NodeCache (In-memory server caching for high-speed read queries)
+- **Payment Processing:** Stripe REST API & Payment Intents
+- **Security & Authentication:** Firebase Admin SDK & CORS middleware
 
+---
 
-## Env Variables
+## ⚡ Architecture Highlights & Features
 
-Make Sure to Create a  .env file in root directory and add appropriate variables in order to use the app.
+- **Complex Aggregation Pipelines:** Custom MongoDB `$group`, `$match`, and `$project` aggregation pipelines driving dynamic Admin Dashboard analytics (calculating total revenue, monthly performance splits, transaction counts, and inventory distribution).
+- **Server-Side Query Caching:** Integrated in-memory caching to serve high-frequency product catalog reads, significantly reducing database IOPS and improving response latency.
+- **Cache Invalidation Workflow:** Built-in cache purging strategy attached to mutation endpoints (`POST`, `PUT`, `DELETE`), ensuring zero stale data delivery to client apps.
+- **Role-Based Endpoint Protection:** Security middleware restricting administrative analytics and product management endpoints exclusively to authorized admins.
 
-**Essential Variables**
-PORT= `4000 or any`
-MONGO_URI= `mongodb://localhost:27017 or cloud uri`
-STRIPE_KEY=`stripe secret key`
-PRODUCT_PER_PAGE=`8 or any`
+---
 
-_fill each filed with your info respectively_
+## ⚙️ Installation & Setup
 
-## Author
+### 1. Prerequisites
+- Node.js (v18+)
+- MongoDB (Local instance or MongoDB Atlas cluster)
 
-**Instagram** Click [Here](https://www.instagram.com/meabhisingh) **@meAbhiSingh**
-**YouTube** Click [Here](https://www.youtube.com/channel/UCO7afj9AUo0zV69pqEYhcjw/) **6 Pack Programmer**
-**LinkedIn** Click [Here](https://in.linkedin.com/in/meabhisingh) **@meAbhiSingh**
-**Twitter** Click [Here](https://twitter.com/meAbhi_Singh) **@meAbhi_Singh**
-
+### 2. Install Dependencies
+```bash
+npm install
