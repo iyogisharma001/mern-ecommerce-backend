@@ -7,6 +7,7 @@ import {
   calculatePercentage,
   getChartData,
   getInventories,
+  getMonthDiff,
 } from "../utils/features.js";
 
 export const getDashboardStats = TryCatch(async (req, res, next) => {
@@ -83,6 +84,7 @@ export const getDashboardStats = TryCatch(async (req, res, next) => {
 
     const latestTransactionsPromise = Order.find({})
       .select(["orderItems", "discount", "total", "status"])
+      .sort({ createdAt: -1 }) // without this it returned the OLDEST 4
       .limit(4);
 
     const [
@@ -154,10 +156,9 @@ export const getDashboardStats = TryCatch(async (req, res, next) => {
     const orderMonthyRevenue = new Array(6).fill(0);
 
     lastSixMonthOrders.forEach((order) => {
-      const creationDate = order.createdAt;
-      const monthDiff = (today.getMonth() - creationDate.getMonth() + 12) % 12;
+      const monthDiff = getMonthDiff(today, order.createdAt);
 
-      if (monthDiff < 6) {
+      if (monthDiff >= 0 && monthDiff < 6) {
         orderMonthCounts[6 - monthDiff - 1] += 1;
         orderMonthyRevenue[6 - monthDiff - 1] += order.total;
       }
@@ -277,8 +278,8 @@ export const getPieCharts = TryCatch(async (req, res, next) => {
 
     const marketingCost = Math.round(grossIncome * (30 / 100));
 
-    const netMargin =
-      grossIncome - discount - productionCost - burnt - marketingCost;
+    // order.total already has the discount removed, so it is not subtracted again
+    const netMargin = grossIncome - productionCost - burnt - marketingCost;
 
     const revenueDistribution = {
       netMargin,

@@ -12,6 +12,7 @@ import userRoute from "./routes/user.js";
 import productRoute from "./routes/products.js";
 import orderRoute from "./routes/order.js";
 import paymentRoute from "./routes/payment.js";
+import { stripeWebhook } from "./controllers/payment.js";
 import dashboardRoute from "./routes/stats.js";
 
 config({
@@ -37,6 +38,13 @@ cloudinary.config({
 export const stripe = new Stripe(stripeKey);
 
 const app = express();
+
+// Stripe webhook needs the raw body for signature checks -> before express.json()
+app.post(
+  "/api/v1/payment/webhook",
+  express.raw({ type: "application/json" }),
+  stripeWebhook
+);
 
 app.use(express.json());
 app.use(morgan("dev"));

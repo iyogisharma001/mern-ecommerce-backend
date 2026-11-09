@@ -1,5 +1,5 @@
 import express from "express";
-import { adminOnly } from "../middlewares/auth.js";
+import { adminOnly, isAuthenticated } from "../middlewares/auth.js";
 import {
   allOrders,
   deleteOrder,
@@ -12,17 +12,17 @@ import {
 const app = express.Router();
 
 // route - /api/v1/order/new
-app.post("/new", newOrder);
+app.post("/new", isAuthenticated, newOrder);
 
 // route - /api/v1/order/my
-app.get("/my", myOrders);
+app.get("/my", isAuthenticated, myOrders);
 
-// route - /api/v1/order/my
+// route - /api/v1/order/all
 app.get("/all", adminOnly, allOrders);
 
 app
   .route("/:id")
-  .get(getSingleOrder)
+  .get(isAuthenticated, getSingleOrder)
   .put(adminOnly, processOrder)
   .delete(adminOnly, deleteOrder);
 

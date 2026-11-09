@@ -3,7 +3,6 @@ import { redis, redisTTL } from "../app.js";
 import { TryCatch } from "../middlewares/error.js";
 import { Product } from "../models/product.js";
 import { Review } from "../models/review.js";
-import { User } from "../models/user.js";
 import {
   BaseQuery,
   NewProductRequestBody,
@@ -11,6 +10,7 @@ import {
 } from "../types/types.js";
 import {
   deleteFromCloudinary,
+  escapeRegex,
   findAverageRatings,
   invalidateCache,
   uploadToCloudinary,
@@ -152,7 +152,8 @@ export const updateProduct = TryCatch(async (req, res, next) => {
   if (name) product.name = name;
   if (price) product.price = price;
   if (stock) product.stock = stock;
-  if (category) product.category = category;
+  // Same as newProduct, so category filters keep working after an edit
+  if (category) product.category = category.toLowerCase();
   if (description) product.description = description;
 
   await product.save();
@@ -178,6 +179,7 @@ export const deleteProduct = TryCatch(async (req, res, next) => {
   await deleteFromCloudinary(ids);
 
   await product.deleteOne();
+  await Review.deleteMany({ product: product._id }); // no orphan reviews
 
   await invalidateCache({
     product: true,
@@ -218,7 +220,8 @@ export const getAllProducts = TryCatch(
 
       if (search)
         baseQuery.name = {
-          $regex: search,
+          // escaped so a crafted search can't hang MongoDB (ReDoS)
+          $regex: escapeRegex(search),
           $options: "i",
         };
 
@@ -227,20 +230,20 @@ export const getAllProducts = TryCatch(
           $lte: Number(price),
         };
 
-      if (category) baseQuery.category = category;
+      if (category) baseQuery.category = category.toLowerCase();
 
       const productsPromise = Product.find(baseQuery)
         .sort(sort && { price: sort === "asc" ? 1 : -1 })
         .limit(limit)
         .skip(skip);
 
-      const [productsFetched, filteredOnlyProduct] = await Promise.all([
+      const [productsFetched, filteredCount] = await Promise.all([
         productsPromise,
-        Product.find(baseQuery),
+        Product.countDocuments(baseQuery),
       ]);
 
       products = productsFetched;
-      totalPage = Math.ceil(filteredOnlyProduct.length / limit);
+      totalPage = Math.ceil(filteredCount / limit);
 
       await redis.setex(key, 30, JSON.stringify({ products, totalPage }));
     }
@@ -277,9 +280,7 @@ export const allReviewsOfProduct = TryCatch(async (req, res, next) => {
 });
 
 export const newReview = TryCatch(async (req, res, next) => {
-  const user = await User.findById(req.query.id);
-
-  if (!user) return next(new ErrorHandler("Not Logged In", 404));
+  const user = req.user!;
 
   const product = await Product.findById(req.params.id);
   if (!product) return next(new ErrorHandler("Product Not Found", 404));
@@ -326,16 +327,14 @@ export const newReview = TryCatch(async (req, res, next) => {
 });
 
 export const deleteReview = TryCatch(async (req, res, next) => {
-  const user = await User.findById(req.query.id);
-
-  if (!user) return next(new ErrorHandler("Not Logged In", 404));
+  const user = req.user!;
 
   const review = await Review.findById(req.params.id);
   if (!review) return next(new ErrorHandler("Review Not Found", 404));
 
-  const isAuthenticUser = review.user.toString() === user._id.toString();
+  const isAuthenticUser = review.user.toString() === user._id;
 
-  if (!isAuthenticUser) return next(new ErrorHandler("Not Authorized", 401));
+  if (!isAuthenticUser) return next(new ErrorHandler("Not Authorized", 403));
 
   await review.deleteOne();
 
@@ -354,6 +353,7 @@ export const deleteReview = TryCatch(async (req, res, next) => {
     product: true,
     productId: String(product._id),
     admin: true,
+    review: true, // was missing: deleted reviews stayed visible for 4 hours
   });
 
   return res.status(200).json({

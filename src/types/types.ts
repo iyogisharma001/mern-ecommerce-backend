@@ -66,13 +66,5 @@ export type ShippingInfoType = {
   pinCode: number;
 };
 
-export interface NewOrderRequestBody {
-  shippingInfo: ShippingInfoType;
-  user: string;
-  subtotal: number;
-  tax: number;
-  shippingCharges: number;
-  discount: number;
-  total: number;
-  orderItems: OrderItemType[];
-}
+// NewOrderRequestBody (client-sent prices/totals) was removed on purpose:
+// POST /order/new now takes only { paymentIntentId } and the server prices the order

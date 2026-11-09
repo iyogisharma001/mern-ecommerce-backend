@@ -57,6 +57,23 @@ const schema = new mongoose.Schema(
       default: "Processing",
     },
 
+    // One order per Stripe payment - stops duplicate orders on retries
+    paymentIntentId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+
+    // Whether this order's quantities were taken out of stock. Lets
+    // finalizeCheckout retry a failed stock update without doing it twice,
+    // and lets deleteOrder know whether there is stock to give back.
+    // Orders created before this field existed DID reduce stock; connectDB
+    // backfills them to true once (see utils/features.ts).
+    stockReduced: {
+      type: Boolean,
+      default: false,
+    },
+
     orderItems: [
       {
         name: String,

@@ -12,7 +12,7 @@ import {
   newReview,
   updateProduct,
 } from "../controllers/product.js";
-import { adminOnly } from "../middlewares/auth.js";
+import { adminOnly, isAuthenticated } from "../middlewares/auth.js";
 import { mutliUpload } from "../middlewares/multer.js";
 
 const app = express.Router();
@@ -40,7 +40,7 @@ app
   .delete(adminOnly, deleteProduct);
 
 app.get("/reviews/:id", allReviewsOfProduct);
-app.post("/review/new/:id", newReview);
-app.delete("/review/:id", deleteReview);
+app.post("/review/new/:id", isAuthenticated, newReview);
+app.delete("/review/:id", isAuthenticated, deleteReview);
 
 export default app;
