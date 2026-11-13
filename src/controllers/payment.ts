@@ -13,6 +13,18 @@ export const TAX_RATE = 0.18;
 export const FREE_SHIPPING_ABOVE = 1000;
 export const SHIPPING_CHARGE = 200;
 
+// Country names the shipping form can send -> ISO 3166-1 alpha-2 codes.
+// Add a line here when you add a country to the frontend's shipping form.
+const COUNTRY_CODES: Record<string, string> = {
+  india: "IN",
+};
+
+export const toCountryCode = (country: string) => {
+  const value = country.trim();
+  if (/^[a-z]{2}$/i.test(value)) return value.toUpperCase();
+  return COUNTRY_CODES[value.toLowerCase()] ?? null;
+};
+
 export const createPaymentIntent = TryCatch(async (req, res, next) => {
   const user = req.user!;
 
@@ -38,6 +50,11 @@ export const createPaymentIntent = TryCatch(async (req, res, next) => {
     !shippingInfo.pinCode
   )
     return next(new ErrorHandler("Please send complete shipping info", 400));
+
+  // Stripe only accepts 2-letter ISO country codes ("IN"), not "india"
+  const countryCode = toCountryCode(String(shippingInfo.country));
+  if (!countryCode)
+    return next(new ErrorHandler("Unsupported shipping country", 400));
 
   // Merge repeated lines of the same product, otherwise [{p,3},{p,3}] with
   // stock 5 passes the per-line stock check twice and oversells
@@ -108,7 +125,7 @@ export const createPaymentIntent = TryCatch(async (req, res, next) => {
         postal_code: String(shippingInfo.pinCode),
         city: shippingInfo.city,
         state: shippingInfo.state,
-        country: shippingInfo.country,
+        country: countryCode,
       },
     },
   });
