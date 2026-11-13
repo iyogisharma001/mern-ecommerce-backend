@@ -73,6 +73,36 @@ export const connectRedis = (redisURI: string) => {
   return redis;
 };
 
+/*
+  Data can change outside the API (the seed script, edits in MongoDB Atlas),
+  and the cache would keep serving the old data for hours. Clearing the read
+  caches on startup means a restart always shows the current data.
+  Only this app's cache keys are removed, never the whole Redis database.
+*/
+const CACHE_KEY_PATTERNS = [
+  "latest-products",
+  "categories",
+  "all-products",
+  "product-*",
+  "products-*",
+  "reviews-*",
+  "admin-*",
+  "all-orders",
+  "my-orders-*",
+  "order-*",
+];
+
+export const clearReadCaches = async (client: Redis) => {
+  let removed = 0;
+  for (const match of CACHE_KEY_PATTERNS) {
+    const stream = client.scanStream({ match, count: 100 });
+    for await (const keys of stream as AsyncIterable<string[]>) {
+      if (keys.length) removed += await client.del(keys);
+    }
+  }
+  console.log(`Cleared ${removed} cached entries on startup`);
+};
+
 export const connectDB = (uri: string) => {
   mongoose
     .connect(uri, {
