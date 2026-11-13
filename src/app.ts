@@ -1,5 +1,9 @@
 import express from "express";
-import { connectDB, connectRedis } from "./utils/features.js";
+import {
+  clearReadCaches,
+  connectDB,
+  connectRedis,
+} from "./utils/features.js";
 import { errorMiddleware } from "./middlewares/error.js";
 import { config } from "dotenv";
 import morgan from "morgan";
@@ -39,6 +43,11 @@ export const redisTTL = process.env.REDIS_TTL || 60 * 60 * 4;
 
 connectDB(mongoURI);
 export const redis = connectRedis(redisURI);
+redis.once("ready", () => {
+  clearReadCaches(redis).catch((e) =>
+    console.log("Could not clear caches on startup:", e)
+  );
+});
 
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
