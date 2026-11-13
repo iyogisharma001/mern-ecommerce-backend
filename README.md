@@ -34,3 +34,6 @@ Developed & Maintained by **Yogesh Sharma** ([GitHub](https://github.com/iyogish
 ### 2. Install Dependencies
 ```bash
 npm install
+## Deployment
+
+The backend runs on **Render** (`render.yaml` + `Dockerfile`) and the frontend on **Vercel**. Follow the step-by-step guide in [DEPLOY.md](DEPLOY.md).
