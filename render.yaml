@@ -1,0 +1,52 @@
+# Render Blueprint: creates the API and a free Redis (Key Value) instance.
+# Render dashboard -> New -> Blueprint -> pick this repo. See DEPLOY.md.
+services:
+  - type: web
+    name: mern-ecommerce-backend
+    runtime: docker
+    plan: free
+    region: singapore # closest free region to India; cannot be changed later
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    autoDeployTrigger: commit # redeploy on every push to the branch
+    envVars:
+      # Filled in automatically from the Redis instance below
+      - key: REDIS_URI
+        fromService:
+          type: keyvalue
+          name: mern-ecommerce-redis
+          property: connectionString
+      - key: REDIS_TTL
+        value: "14400" # cache lifetime in seconds (4 hours)
+      - key: PRODUCT_PER_PAGE
+        value: "8"
+
+      # Secrets: Render asks for these when you create the Blueprint
+      - key: MONGO_URI
+        sync: false
+      - key: STRIPE_KEY # Stripe SECRET key (sk_test_... / sk_live_...)
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET # whsec_..., add after creating the webhook
+        sync: false
+      - key: CLOUD_NAME
+        sync: false
+      - key: CLOUD_API_KEY
+        sync: false
+      - key: CLOUD_API_SECRET
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY # paste the whole key, with the \n characters
+        sync: false
+      - key: CLIENT_URL # your Vercel URL(s), comma-separated, no trailing slash
+        sync: false
+
+  # Free Redis used only as a cache: losing it on restart is harmless
+  - type: keyvalue
+    name: mern-ecommerce-redis
+    plan: free
+    region: singapore # must match the web service to connect privately
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: [] # no public access; only services in this Render account
