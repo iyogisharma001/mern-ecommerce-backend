@@ -23,7 +23,18 @@ const port = process.env.PORT || 4000;
 const mongoURI = process.env.MONGO_URI || "";
 const stripeKey = process.env.STRIPE_KEY || "";
 const redisURI = process.env.REDIS_URI || "";
-const clientURL = process.env.CLIENT_URL || "";
+// One or more frontend URLs, comma-separated:
+// CLIENT_URL=http://localhost:5173,https://my-shop.vercel.app
+const clientURLs = (process.env.CLIENT_URL || "")
+  .split(",")
+  .map((url) => url.trim().replace(/\/$/, ""))
+  .filter(Boolean);
+
+if (clientURLs.length === 0)
+  console.warn(
+    "WARNING: CLIENT_URL is not set in .env - browsers will be blocked by CORS. " +
+      "Set it to your frontend URL, e.g. CLIENT_URL=http://localhost:5173"
+  );
 export const redisTTL = process.env.REDIS_TTL || 60 * 60 * 4;
 
 connectDB(mongoURI);
@@ -50,7 +61,7 @@ app.use(express.json());
 app.use(morgan("dev"));
 app.use(
   cors({
-    origin: [clientURL],
+    origin: clientURLs,
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
