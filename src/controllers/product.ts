@@ -18,6 +18,21 @@ import {
 import ErrorHandler from "../utils/utility-class.js";
 // import { faker } from "@faker-js/faker";
 
+// Form fields arrive as strings (multipart), so check the numeric value
+const validatePrice = (price: unknown) => {
+  const value = Number(price);
+  if (!Number.isFinite(value) || value <= 0)
+    return "Price must be a number greater than 0";
+  return null;
+};
+
+const validateStock = (stock: unknown) => {
+  const value = Number(stock);
+  if (!Number.isInteger(value) || value < 0)
+    return "Stock must be a whole number, 0 or more";
+  return null;
+};
+
 // Revalidate on New,Update,Delete Product & on New Order
 export const getlatestProducts = TryCatch(async (req, res, next) => {
   let products;
@@ -105,8 +120,20 @@ export const newProduct = TryCatch(
     if (photos.length > 5)
       return next(new ErrorHandler("You can only upload 5 Photos", 400));
 
-    if (!name || !price || !stock || !category || !description)
+    if (
+      !name ||
+      price === undefined ||
+      stock === undefined ||
+      !category ||
+      !description
+    )
       return next(new ErrorHandler("Please enter All Fields", 400));
+
+    const priceError = validatePrice(price);
+    if (priceError) return next(new ErrorHandler(priceError, 400));
+
+    const stockError = validateStock(stock);
+    if (stockError) return next(new ErrorHandler(stockError, 400));
 
     // Upload Here
 
@@ -139,6 +166,19 @@ export const updateProduct = TryCatch(async (req, res, next) => {
 
   if (!product) return next(new ErrorHandler("Product Not Found", 404));
 
+  // Validate BEFORE uploading new photos / deleting old ones
+  const hasPrice = price !== undefined && price !== "";
+  const hasStock = stock !== undefined && stock !== "";
+
+  if (hasPrice) {
+    const priceError = validatePrice(price);
+    if (priceError) return next(new ErrorHandler(priceError, 400));
+  }
+  if (hasStock) {
+    const stockError = validateStock(stock);
+    if (stockError) return next(new ErrorHandler(stockError, 400));
+  }
+
   if (photos && photos.length > 0) {
     const photosURL = await uploadToCloudinary(photos);
 
@@ -150,8 +190,9 @@ export const updateProduct = TryCatch(async (req, res, next) => {
   }
 
   if (name) product.name = name;
-  if (price) product.price = price;
-  if (stock) product.stock = stock;
+  if (hasPrice) product.price = Number(price);
+  // hasStock instead of `if (stock)` so stock can be set to 0
+  if (hasStock) product.stock = Number(stock);
   // Same as newProduct, so category filters keep working after an edit
   if (category) product.category = category.toLowerCase();
   if (description) product.description = description;

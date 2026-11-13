@@ -28,9 +28,11 @@ export const getDashboardStats = TryCatch(async (req, res, next) => {
       end: today,
     };
 
+    // end is EXCLUSIVE ($lt): the first moment of this month. The old end
+    // (midnight at the start of last month's final day) dropped that whole day.
     const lastMonth = {
       start: new Date(today.getFullYear(), today.getMonth() - 1, 1),
-      end: new Date(today.getFullYear(), today.getMonth(), 0),
+      end: thisMonth.start,
     };
 
     const thisMonthProductsPromise = Product.find({
@@ -43,7 +45,7 @@ export const getDashboardStats = TryCatch(async (req, res, next) => {
     const lastMonthProductsPromise = Product.find({
       createdAt: {
         $gte: lastMonth.start,
-        $lte: lastMonth.end,
+        $lt: lastMonth.end,
       },
     });
 
@@ -57,7 +59,7 @@ export const getDashboardStats = TryCatch(async (req, res, next) => {
     const lastMonthUsersPromise = User.find({
       createdAt: {
         $gte: lastMonth.start,
-        $lte: lastMonth.end,
+        $lt: lastMonth.end,
       },
     });
 
@@ -71,7 +73,7 @@ export const getDashboardStats = TryCatch(async (req, res, next) => {
     const lastMonthOrdersPromise = Order.find({
       createdAt: {
         $gte: lastMonth.start,
-        $lte: lastMonth.end,
+        $lt: lastMonth.end,
       },
     });
 
