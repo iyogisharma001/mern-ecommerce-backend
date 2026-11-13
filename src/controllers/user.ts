@@ -3,6 +3,7 @@ import { User } from "../models/user.js";
 import { NewUserRequestBody } from "../types/types.js";
 import { TryCatch } from "../middlewares/error.js";
 import ErrorHandler from "../utils/utility-class.js";
+import { invalidateCache } from "../utils/features.js";
 
 // Sign-up / login. The uid and email come from the VERIFIED Firebase token,
 // so nobody can create an account with someone else's id.
@@ -41,6 +42,9 @@ export const newUser = TryCatch(
       _id,
       dob: new Date(dob),
     });
+
+    // Dashboard user counts / charts include the new user right away
+    await invalidateCache({ admin: true });
 
     return res.status(201).json({
       success: true,
@@ -86,6 +90,8 @@ export const deleteUser = TryCatch(async (req, res, next) => {
   if (!user) return next(new ErrorHandler("Invalid Id", 400));
 
   await user.deleteOne();
+
+  await invalidateCache({ admin: true });
 
   return res.status(200).json({
     success: true,
