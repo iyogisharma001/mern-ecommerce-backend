@@ -1,14 +1,18 @@
 {
   "name": "ecommerce-backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "REST API for ShopSphere, a MERN e-commerce store",
   "main": "./dist/app.js",
   "type": "module",
   "scripts": {
     "start": "node dist/app.js",
     "build": "tsc",
     "watch": "tsc -w",
-    "dev": "npx tsx watch ./src/app.ts"
+    "dev": "npx tsx watch ./src/app.ts",
+    "seed": "tsx ./src/scripts/seed.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "author": "",
   "license": "ISC",
@@ -17,7 +21,9 @@
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
+    "express-rate-limit": "^7.4.1",
     "firebase-admin": "^12.7.0",
+    "helmet": "^7.1.0",
     "ioredis": "^5.4.1",
     "mongoose": "^8.0.0",
     "morgan": "^1.10.0",
@@ -36,6 +42,7 @@
     "@types/uuid": "^9.0.6",
     "@types/validator": "^13.11.5",
     "tsx": "^4.15.6",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "vitest": "^2.1.8"
   }
 }

@@ -16,22 +16,9 @@ import {
   uploadToCloudinary,
 } from "../utils/features.js";
 import ErrorHandler from "../utils/utility-class.js";
+import { validatePrice, validateStock } from "../utils/helpers.js";
 // import { faker } from "@faker-js/faker";
 
-// Form fields arrive as strings (multipart), so check the numeric value
-const validatePrice = (price: unknown) => {
-  const value = Number(price);
-  if (!Number.isFinite(value) || value <= 0)
-    return "Price must be a number greater than 0";
-  return null;
-};
-
-const validateStock = (stock: unknown) => {
-  const value = Number(stock);
-  if (!Number.isInteger(value) || value < 0)
-    return "Stock must be a whole number, 0 or more";
-  return null;
-};
 
 // Revalidate on New,Update,Delete Product & on New Order
 export const getlatestProducts = TryCatch(async (req, res, next) => {
@@ -41,7 +28,7 @@ export const getlatestProducts = TryCatch(async (req, res, next) => {
 
   if (products) products = JSON.parse(products);
   else {
-    products = await Product.find({}).sort({ createdAt: -1 }).limit(5);
+    products = await Product.find({}).sort({ createdAt: -1 }).limit(8);
     await redis.setex("latest-products", redisTTL, JSON.stringify(products));
   }
 
@@ -238,22 +225,21 @@ export const getAllProducts = TryCatch(
   async (req: Request<{}, {}, {}, SearchRequestQuery>, res, next) => {
     const { search, sort, category, price } = req.query;
 
-    const page = Number(req.query.page) || 1;
+    const page = Math.max(1, Math.floor(Number(req.query.page)) || 1);
 
     const key = `products-${search}-${sort}-${category}-${price}-${page}`;
 
     let products;
     let totalPage;
+    let total;
 
     const cachedData = await redis.get(key);
     if (cachedData) {
       const data = JSON.parse(cachedData);
       totalPage = data.totalPage;
+      total = data.total;
       products = data.products;
     } else {
-      // 1,2,3,4,5,6,7,8
-      // 9,10,11,12,13,14,15,16
-      // 17,18,19,20,21,22,23,24
       const limit = Number(process.env.PRODUCT_PER_PAGE) || 8;
       const skip = (page - 1) * limit;
 
@@ -273,10 +259,18 @@ export const getAllProducts = TryCatch(
 
       if (category) baseQuery.category = category.toLowerCase();
 
+      // Default is newest first; _id breaks ties so pages never repeat or skip items
+      const order: Record<string, 1 | -1> =
+        sort === "asc"
+          ? { price: 1, _id: 1 }
+          : sort === "dsc"
+          ? { price: -1, _id: 1 }
+          : { createdAt: -1, _id: -1 };
+
       const productsPromise = Product.find(baseQuery)
-        .sort(sort && { price: sort === "asc" ? 1 : -1 })
-        .limit(limit)
-        .skip(skip);
+        .sort(order)
+        .skip(skip)
+        .limit(limit);
 
       const [productsFetched, filteredCount] = await Promise.all([
         productsPromise,
@@ -284,15 +278,17 @@ export const getAllProducts = TryCatch(
       ]);
 
       products = productsFetched;
+      total = filteredCount;
       totalPage = Math.ceil(filteredCount / limit);
 
-      await redis.setex(key, 30, JSON.stringify({ products, totalPage }));
+      await redis.setex(key, 30, JSON.stringify({ products, totalPage, total }));
     }
 
     return res.status(200).json({
       success: true,
       products,
       totalPage,
+      total,
     });
   }
 );

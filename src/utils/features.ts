@@ -8,6 +8,7 @@ import { Product } from "../models/product.js";
 import { Review } from "../models/review.js";
 import { InvalidateCacheProps, OrderItemType } from "../types/types.js";
 import ErrorHandler from "./utility-class.js";
+import { getMonthDiff } from "./helpers.js";
 
 export const findAverageRatings = async (
   productId: mongoose.Types.ObjectId
@@ -71,6 +72,36 @@ export const connectRedis = (redisURI: string) => {
   redis.on("error", (e) => console.log(e));
 
   return redis;
+};
+
+/*
+  Data can change outside the API (the seed script, edits in MongoDB Atlas),
+  and the cache would keep serving the old data for hours. Clearing the read
+  caches on startup means a restart always shows the current data.
+  Only this app's cache keys are removed, never the whole Redis database.
+*/
+const CACHE_KEY_PATTERNS = [
+  "latest-products",
+  "categories",
+  "all-products",
+  "product-*",
+  "products-*",
+  "reviews-*",
+  "admin-*",
+  "all-orders",
+  "my-orders-*",
+  "order-*",
+];
+
+export const clearReadCaches = async (client: Redis) => {
+  let removed = 0;
+  for (const match of CACHE_KEY_PATTERNS) {
+    const stream = client.scanStream({ match, count: 100 });
+    for await (const keys of stream as AsyncIterable<string[]>) {
+      if (keys.length) removed += await client.del(keys);
+    }
+  }
+  console.log(`Cleared ${removed} cached entries on startup`);
 };
 
 export const connectDB = (uri: string) => {
@@ -157,22 +188,8 @@ export const reduceStock = async (orderItems: OrderItemType[]) => {
   }
 };
 
-// Real month-over-month change: 100 -> 150 is +50%, 100 -> 50 is -50%
-export const calculatePercentage = (thisMonth: number, lastMonth: number) => {
-  if (lastMonth === 0) return thisMonth > 0 ? 100 : 0;
-  const percent = ((thisMonth - lastMonth) / lastMonth) * 100;
-  return Number(percent.toFixed(0));
-};
-
-// Whole months between two dates, including the year
-// (Nov 2025 -> Nov 2026 = 12, not 0)
-export const getMonthDiff = (today: Date, date: Date) =>
-  (today.getFullYear() - date.getFullYear()) * 12 +
-  (today.getMonth() - date.getMonth());
-
-// Makes user text safe to use inside a MongoDB $regex
-export const escapeRegex = (text: string) =>
-  text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// Pure helpers live in helpers.ts (unit tested); re-exported for existing imports
+export { calculatePercentage, escapeRegex, getMonthDiff } from "./helpers.js";
 
 /*
   Turns a paid Stripe PaymentIntent into an Order. Safe to call more than once
