@@ -3,6 +3,9 @@
 
     npm run seed            add the demo products
     npm run seed -- --dry   show what would be added, change nothing
+    npm run seed -- --no-upload
+                            keep the original image URLs (no Cloudinary keys
+                            needed; handy for local development)
 
   Reads MONGO_URI, CLOUD_NAME, CLOUD_API_KEY and CLOUD_API_SECRET from .env.
   Safe to run more than once: products whose name already exists are skipped.
@@ -32,11 +35,14 @@ type SeedProduct = {
 };
 
 const dryRun = process.argv.includes("--dry");
+// --no-upload: store the original image URLs instead of copying them to
+// Cloudinary (local development, or seeding without Cloudinary keys)
+const noUpload = process.argv.includes("--no-upload");
 const products: SeedProduct[] = JSON.parse(
   readFileSync(new URL("./seed-products.json", import.meta.url), "utf8")
 );
 
-const required = dryRun
+const required = dryRun || noUpload
   ? ["MONGO_URI"]
   : ["MONGO_URI", "CLOUD_NAME", "CLOUD_API_KEY", "CLOUD_API_SECRET"];
 const missing = required.filter((key) => !process.env[key]);
@@ -81,7 +87,12 @@ const main = async () => {
     }
 
     const photos = [];
-    for (const url of item.images) photos.push(await uploadPhoto(url));
+    for (const [i, url] of item.images.entries())
+      photos.push(
+        noUpload
+          ? { public_id: `seed/${item.name}/${i}`, url } // nothing in Cloudinary to delete
+          : await uploadPhoto(url)
+      );
 
     await Product.create({
       name: item.name,
