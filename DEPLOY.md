@@ -75,12 +75,24 @@ The webhook creates the order even if the customer closes the tab right after pa
    - Event: `payment_intent.succeeded`
 2. Copy the **Signing secret** `whsec_...` → Render → set `STRIPE_WEBHOOK_SECRET` → Save.
 
-## 6. Make yourself admin
+## 6. Add demo products (optional)
+On your computer, in this repo, create a `.env` file with your Atlas `MONGO_URI`, then run:
+
+```bash
+npm install
+npm run seed -- --no-upload
+```
+
+This adds 24 demo products (phones, laptops, watches, shoes, bags, sunglasses). It is safe to run more than once.
+`--no-upload` keeps the original image links; leave it out to copy the photos into your Cloudinary (needs the `CLOUD_*` keys too).
+Then restart the API (Render → Manual Deploy → Restart service) so the product cache is cleared.
+
+## 7. Make yourself admin
 1. Log in once on the live site with Google.
 2. Atlas → **Browse Collections** → `Ecommerce_24` → `users` → your document → set `role` to `"admin"`.
 3. Refresh the site. **Admin** now appears in the user menu.
 
-## 7. Test it
+## 8. Test it
 1. As admin, add a product with a photo. This checks Cloudinary.
 2. As a customer, add it to the cart → Checkout → country **India** → pay with test card
    `4242 4242 4242 4242`, any future date, any CVC.

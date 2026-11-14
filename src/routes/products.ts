@@ -23,7 +23,7 @@ app.post("/new", adminOnly, mutliUpload, newProduct);
 //To get all Products with filters  - /api/v1/product/all
 app.get("/all", getAllProducts);
 
-//To get last 10 Products  - /api/v1/product/latest
+// 8 newest products - /api/v1/product/latest
 app.get("/latest", getlatestProducts);
 
 //To get all unique Categories  - /api/v1/product/categories

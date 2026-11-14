@@ -7,23 +7,9 @@ import { Product } from "../models/product.js";
 import { ShippingInfoType } from "../types/types.js";
 import { finalizeCheckout } from "../utils/features.js";
 import ErrorHandler from "../utils/utility-class.js";
+import { calculateOrderTotals, toCountryCode } from "../utils/helpers.js";
 
-// Same pricing rules as the frontend cart (cartReducer.calculatePrice)
-export const TAX_RATE = 0.18;
-export const FREE_SHIPPING_ABOVE = 1000;
-export const SHIPPING_CHARGE = 200;
 
-// Country names the shipping form can send -> ISO 3166-1 alpha-2 codes.
-// Add a line here when you add a country to the frontend's shipping form.
-const COUNTRY_CODES: Record<string, string> = {
-  india: "IN",
-};
-
-export const toCountryCode = (country: string) => {
-  const value = country.trim();
-  if (/^[a-z]{2}$/i.test(value)) return value.toUpperCase();
-  return COUNTRY_CODES[value.toLowerCase()] ?? null;
-};
 
 export const createPaymentIntent = TryCatch(async (req, res, next) => {
   const user = req.user!;
@@ -99,19 +85,15 @@ export const createPaymentIntent = TryCatch(async (req, res, next) => {
     });
   }
 
-  const subtotal = orderItems.reduce((s, i) => s + i.price * i.quantity, 0);
-
-  let discount = 0;
+  let couponAmount = 0;
   if (coupon) {
     const found = await Coupon.findOne({ code: String(coupon) });
     if (!found) return next(new ErrorHandler("Invalid Coupon Code", 400));
-    // A coupon can never make the total negative
-    discount = Math.min(found.amount, subtotal);
+    couponAmount = found.amount;
   }
 
-  const tax = Math.round(subtotal * TAX_RATE);
-  const shippingCharges = subtotal > FREE_SHIPPING_ABOVE ? 0 : SHIPPING_CHARGE;
-  const total = subtotal + tax + shippingCharges - discount;
+  const { subtotal, tax, shippingCharges, discount, total } =
+    calculateOrderTotals(orderItems, couponAmount);
 
   const paymentIntent = await stripe.paymentIntents.create({
     amount: Math.round(total * 100),
