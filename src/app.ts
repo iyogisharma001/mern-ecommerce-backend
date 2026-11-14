@@ -10,6 +10,9 @@ import morgan from "morgan";
 import Stripe from "stripe";
 import cors from "cors";
 import { v2 as cloudinary } from "cloudinary";
+import helmet from "helmet";
+import mongoose from "mongoose";
+import { apiLimiter, strictLimiter } from "./middlewares/rate-limit.js";
 
 // Importing Routes
 import userRoute from "./routes/user.js";
@@ -58,6 +61,13 @@ cloudinary.config({
 export const stripe = new Stripe(stripeKey);
 
 const app = express();
+const isProduction = process.env.NODE_ENV === "production";
+
+// Render (and most hosts) sit behind one proxy: needed for real client IPs,
+// which the rate limiter relies on
+app.set("trust proxy", 1);
+app.disable("x-powered-by");
+app.use(helmet());
 
 // Stripe webhook needs the raw body for signature checks -> before express.json()
 app.post(
@@ -66,8 +76,8 @@ app.post(
   stripeWebhook
 );
 
-app.use(express.json());
-app.use(morgan("dev"));
+app.use(express.json({ limit: "100kb" }));
+app.use(morgan(isProduction ? "combined" : "dev"));
 app.use(
   cors({
     origin: clientURLs,
@@ -80,6 +90,23 @@ app.get("/", (req, res) => {
   res.send("API Working with /api/v1");
 });
 
+// Liveness + dependency status, for uptime monitors and debugging deploys
+app.get("/api/v1/health", (req, res) => {
+  const db = mongoose.connection.readyState === 1;
+  const cache = redis.status === "ready";
+  res.status(db && cache ? 200 : 503).json({
+    status: db && cache ? "ok" : "degraded",
+    db: db ? "connected" : "disconnected",
+    cache: cache ? "connected" : redis.status,
+    uptime: Math.round(process.uptime()),
+  });
+});
+
+// Rate limits: a general one for the whole API, a stricter one for
+// sign-up and payment creation (the Stripe webhook above is not limited)
+app.use("/api/v1", apiLimiter);
+app.use(["/api/v1/user/new", "/api/v1/payment/create"], strictLimiter);
+
 // Using Routes
 app.use("/api/v1/user", userRoute);
 app.use("/api/v1/product", productRoute);
@@ -87,7 +114,11 @@ app.use("/api/v1/order", orderRoute);
 app.use("/api/v1/payment", paymentRoute);
 app.use("/api/v1/dashboard", dashboardRoute);
 
-app.use("/uploads", express.static("uploads"));
+// Unknown API route -> JSON 404 instead of Express's HTML page
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: "Route not found" });
+});
+
 app.use(errorMiddleware);
 
 app.listen(port, () => {

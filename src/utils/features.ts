@@ -8,6 +8,7 @@ import { Product } from "../models/product.js";
 import { Review } from "../models/review.js";
 import { InvalidateCacheProps, OrderItemType } from "../types/types.js";
 import ErrorHandler from "./utility-class.js";
+import { getMonthDiff } from "./helpers.js";
 
 export const findAverageRatings = async (
   productId: mongoose.Types.ObjectId
@@ -187,22 +188,8 @@ export const reduceStock = async (orderItems: OrderItemType[]) => {
   }
 };
 
-// Real month-over-month change: 100 -> 150 is +50%, 100 -> 50 is -50%
-export const calculatePercentage = (thisMonth: number, lastMonth: number) => {
-  if (lastMonth === 0) return thisMonth > 0 ? 100 : 0;
-  const percent = ((thisMonth - lastMonth) / lastMonth) * 100;
-  return Number(percent.toFixed(0));
-};
-
-// Whole months between two dates, including the year
-// (Nov 2025 -> Nov 2026 = 12, not 0)
-export const getMonthDiff = (today: Date, date: Date) =>
-  (today.getFullYear() - date.getFullYear()) * 12 +
-  (today.getMonth() - date.getMonth());
-
-// Makes user text safe to use inside a MongoDB $regex
-export const escapeRegex = (text: string) =>
-  text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// Pure helpers live in helpers.ts (unit tested); re-exported for existing imports
+export { calculatePercentage, escapeRegex, getMonthDiff } from "./helpers.js";
 
 /*
   Turns a paid Stripe PaymentIntent into an Order. Safe to call more than once
